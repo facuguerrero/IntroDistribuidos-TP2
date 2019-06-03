@@ -91,6 +91,8 @@ def main():
     prefijos_finales = 0
 
     for asn, direcciones_ip in direcciones_agrupadas_por_asn.iteritems():
+        print '---------- Inicia agregacion para el ASN: %s ----------' % asn
+
         # Incrementamos los datos para la salida
         asn_iniciales += 1
         prefijos_iniciales += len(direcciones_ip)
@@ -98,16 +100,23 @@ def main():
         # Organizamos las direcciones ip pertenecientes a un mismo AS, por mascara
         direcciones_agrupadas_por_mascara = crear_direcciones_agrupadas_por_mascara(direcciones_ip)
 
-        # Estructuras auxiliares para python.
-        # Python no deja modificar un diccionario mientras que se lo esta iterando
-        # Por eso necesitamos estructuras para luego modificar el resultado.
-        direcciones_a_agregar = {}
-        direcciones_a_borrar = {}
+        # Empezando por la mascara mas grande, recorro todas las mascaras realizando las
+        # Agregaciones posibles
+        mascara_actual = max(direcciones_agrupadas_por_mascara.keys())
+        while mascara_actual >= 0:
 
-        # Ahora comparamos todas las direcciones dentro de una misma mascara.
-        for mascara, direcciones_ip in direcciones_agrupadas_por_mascara.iteritems():
+            # Estructuras auxiliares para python.
+            # Python no deja modificar un diccionario mientras que se lo esta iterando
+            # Por eso necesitamos estructuras para luego modificar el resultado.
+            direcciones_a_agregar = {}
+            direcciones_a_borrar = {}
 
-            lista_direcciones_ip = list(direcciones_ip)
+            #Si no tenemos ninguna direccion con la mascara, no hacemos nada
+            if not mascara_actual in direcciones_agrupadas_por_mascara.keys():
+                mascara_actual -= 1
+                continue
+
+            lista_direcciones_ip = list(direcciones_agrupadas_por_mascara[mascara_actual])
             agregaciones = []
             for i in xrange(len(lista_direcciones_ip)-1):
                 for j in xrange(i+1, len(lista_direcciones_ip)):
@@ -118,31 +127,30 @@ def main():
                     if dir_ip_1 in agregaciones or dir_ip_2 in agregaciones or dir_ip_1 == dir_ip_2:
                         continue
 
-                    result = son_contiguas(dir_ip_1, dir_ip_2, mascara)
+                    result = son_contiguas(dir_ip_1, dir_ip_2, mascara_actual)
                     if result[0]:
-                        nueva_dir_ip = obtener_prefijo_de_direccion(result[1], mascara-1)
-                        agregar_clave_valor(direcciones_a_agregar, mascara-1, nueva_dir_ip)
+                        nueva_dir_ip = obtener_prefijo_de_direccion(result[1], mascara_actual-1)
+                        agregar_clave_valor(direcciones_a_agregar, mascara_actual-1, nueva_dir_ip)
 
                         # Las agregamos a la lista de agregaciones
                         agregaciones.append(dir_ip_1)
                         agregaciones.append(dir_ip_2)
 
                         # Las agregamos al diccionario para modificar el resultado final
-                        agregar_clave_valor(direcciones_a_borrar, mascara, dir_ip_1)
-                        agregar_clave_valor(direcciones_a_borrar, mascara, dir_ip_2)
+                        agregar_clave_valor(direcciones_a_borrar, mascara_actual, dir_ip_1)
+                        agregar_clave_valor(direcciones_a_borrar, mascara_actual, dir_ip_2)
 
-
-            print 'Se agregaron %d direcciones para la mascara %d' % (len(agregaciones)/2, mascara)
-
-        limpiar_resultado_final(direcciones_a_borrar, direcciones_a_agregar, direcciones_agrupadas_por_mascara)
+            print 'Se agregaron %d direcciones para la mascara %d' % (len(agregaciones)/2, mascara_actual)
+            mascara_actual -= 1
+            limpiar_resultado_final(direcciones_a_borrar, direcciones_a_agregar, direcciones_agrupadas_por_mascara)
 
         # Obtenemos la cantidad de direcciones finales
         for prefijos in direcciones_agrupadas_por_mascara.values():
             prefijos_finales += len(prefijos)
-        print 'Agregacion finalizada para el ASN: %s' % asn
+        print '---------- Agregacion finalizada para el ASN: %s ----------\n' % asn
 
     print 'Cantidad de entradas iniciales: %d' % prefijos_iniciales
-    print 'Cantidad de entradas finales:: %d' % prefijos_finales
+    print 'Cantidad de entradas finales: %d' % prefijos_finales
 
 if __name__ == '__main__':
     main()
